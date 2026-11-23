@@ -62,8 +62,7 @@ SecurityResult evaluate_security(const char *raw_input)
         res.is_suspicious = 1;
         res.category = "Privilege escalation attempt (sudo)";
         res.prompt_password = 1;
-        snprintf(res.simulated_output, sizeof(res.simulated_output),
-                 "sudo: 3 incorrect password attempts\n");
+        res.simulated_output[0] = '\0'; // Handled via authentic 3-attempt challenge loop in main
         return res;
     }
 

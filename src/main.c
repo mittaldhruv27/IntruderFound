@@ -466,7 +466,7 @@ static void process_echo(Node *current_dir, Node *root, Node *home, const char *
 }
 
 // Fake password prompt for sudo/passwd without echoing password
-static void fake_password_prompt(const char *prompt)
+static int fake_password_prompt(const char *prompt, char *captured, size_t cap_size)
 {
     printf("%s", prompt);
     fflush(stdout);
@@ -482,17 +482,70 @@ static void fake_password_prompt(const char *prompt)
         tcsetattr(STDIN_FILENO, TCSANOW, &newt);
     }
 
-    char dummy[128];
-    if (fgets(dummy, sizeof(dummy), stdin) == NULL)
+    if (captured && cap_size > 0)
     {
-        // EOF
+        captured[0] = '\0';
     }
+
+    char dummy[128];
+    char *res = fgets(dummy, sizeof(dummy), stdin);
 
     if (is_term)
     {
         tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
     }
     printf("\n");
+
+    if (res == NULL)
+    {
+        return -1;
+    }
+
+    dummy[strcspn(dummy, "\r\n")] = '\0';
+    if (captured && cap_size > 0)
+    {
+        strncpy(captured, dummy, cap_size - 1);
+        captured[cap_size - 1] = '\0';
+    }
+    return 0;
+}
+
+// Simulates authentic Linux sudo 3-attempt password challenge loop
+static void simulate_sudo_challenge(const char *username)
+{
+    char prompt[128];
+    snprintf(prompt, sizeof(prompt), "[sudo] password for %s: ", username);
+
+    for (int attempt = 1; attempt <= 3; attempt++)
+    {
+        char pass[128] = {0};
+        int ret = fake_password_prompt(prompt, pass, sizeof(pass));
+        if (ret == -1)
+        {
+            // Non-interactive EOF: emit standard failure
+            if (!isatty(STDIN_FILENO))
+            {
+                printf("sudo: 3 incorrect password attempts\n");
+            }
+            return;
+        }
+
+        if (pass[0] != '\0')
+        {
+            char log_msg[256];
+            snprintf(log_msg, sizeof(log_msg), "sudo credential harvest attempt %d/3: %s", attempt, pass);
+            logger_log("CREDENTIAL_HARVEST", log_msg);
+        }
+
+        if (attempt < 3)
+        {
+            printf("Sorry, try again.\n");
+        }
+        else
+        {
+            printf("sudo: 3 incorrect password attempts\n");
+        }
+    }
 }
 
 int main(void)
@@ -629,25 +682,40 @@ int main(void)
 
             if (sec.prompt_password)
             {
-                if (strncmp(input, "sudo", 4) == 0)
+                if (strncmp(input, "sudo", 4) == 0 && (input[4] == ' ' || input[4] == '\0'))
                 {
-                    char prompt[128];
-                    snprintf(prompt, sizeof(prompt), "[sudo] password for %s: ", DECOY_USER);
-                    fake_password_prompt(prompt);
+                    simulate_sudo_challenge(DECOY_USER);
                 }
-                else if (strncmp(input, "su", 2) == 0)
+                else if (strncmp(input, "su", 2) == 0 && (input[2] == ' ' || input[2] == '\0'))
                 {
-                    fake_password_prompt("Password: ");
+                    char pass[128] = {0};
+                    fake_password_prompt("Password: ", pass, sizeof(pass));
+                    if (pass[0] != '\0')
+                    {
+                        char log_msg[256];
+                        snprintf(log_msg, sizeof(log_msg), "su credential harvest: %s", pass);
+                        logger_log("CREDENTIAL_HARVEST", log_msg);
+                    }
                 }
                 else if (strncmp(input, "passwd", 6) == 0)
                 {
                     printf("Changing password for %s.\n", DECOY_USER);
-                    fake_password_prompt("(current) UNIX password: ");
+                    char pass[128] = {0};
+                    fake_password_prompt("(current) UNIX password: ", pass, sizeof(pass));
+                    if (pass[0] != '\0')
+                    {
+                        char log_msg[256];
+                        snprintf(log_msg, sizeof(log_msg), "passwd credential harvest: %s", pass);
+                        logger_log("CREDENTIAL_HARVEST", log_msg);
+                    }
                 }
             }
 
             // Print simulated authentic UNIX response (No "Security alert" giveaway!)
-            printf("%s", sec.simulated_output);
+            if (sec.simulated_output[0] != '\0')
+            {
+                printf("%s", sec.simulated_output);
+            }
             continue;
         }
 
